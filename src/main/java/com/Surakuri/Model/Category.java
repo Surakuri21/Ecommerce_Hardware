@@ -21,7 +21,7 @@ public class Category {
     private Long id;
 
     private String name;
-    private String description;
+    private String description;  // addition
 
     @NotNull
     @Column(unique = true)
@@ -31,7 +31,7 @@ public class Category {
     private Category parentCategory;
 
      @NotNull
-    private String level;
+    private Integer level;
 
 }
 
