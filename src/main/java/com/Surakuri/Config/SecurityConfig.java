@@ -43,7 +43,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(Authorize -> Authorize
                         // Public endpoints
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/sellers/**").permitAll()
+                        .requestMatchers("/api/sellers/register").permitAll() // Allow public access to seller registration
                         .requestMatchers("/api/products/**").permitAll() // Allow public access to products
 
                         // All other requests must be authenticated

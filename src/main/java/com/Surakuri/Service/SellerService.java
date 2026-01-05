@@ -9,9 +9,9 @@ import com.Surakuri.Model.dto.SellerRegisterRequest;
 import com.Surakuri.Model.entity.Other_Business_Entities.Address;
 import com.Surakuri.Model.entity.Other_Business_Entities.Seller;
 import com.Surakuri.Model.entity.Other_Business_Entities.SellerReport;
-import com.Surakuri.Repository.AddressRepository;
-import com.Surakuri.Repository.SellerReportRepository;
-import com.Surakuri.Repository.SellerRepository;
+import com.Surakuri.Model.entity.Payment_Orders.Order;
+import com.Surakuri.Model.entity.User_Cart.User;
+import com.Surakuri.Repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,30 +20,49 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class SellerService {
 
     @Autowired
     private SellerRepository sellerRepository;
-
+    @Autowired
+    private UserRepository userRepository;
     @Autowired
     private AddressRepository addressRepository;
-
     @Autowired
     private SellerReportRepository sellerReportRepository;
-
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private OrderRepository orderRepository;
 
     @Transactional
     public Seller registerSeller(SellerRegisterRequest req) {
 
-        if (sellerRepository.existsByEmail(req.getEmail())) {
-            throw new UserAlreadyExistsException("Seller email already exists.");
+        // 1. Check if a user with this email already exists
+        if (userRepository.existsByEmail(req.getEmail())) {
+            throw new UserAlreadyExistsException("An account with this email already exists.");
         }
 
+        // 2. Create the core User entity for authentication
+        User user = new User();
+        user.setEmail(req.getEmail());
+        user.setUsername(req.getEmail());
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+        user.setFirstName(req.getSellerName()); // Use seller name as first name
+        user.setLastName(""); // Or ask for this in the request
+        user.setMobile(req.getMobile());
+        user.setRole(User_Role.ROLE_SELLER);
+        user.setActive(true); // Sellers are active by default but their account status is pending
+        user.setCreatedAt(LocalDateTime.now());
+        User savedUser = userRepository.save(user);
+
+        // 3. Create the pickup address
         Address address = new Address();
+        address.setUser(savedUser);
         address.setContactPersonName(req.getSellerName());
         address.setContactMobile(req.getMobile());
         address.setStreet(req.getStreet());
@@ -51,33 +70,26 @@ public class SellerService {
         address.setProvince(req.getProvince());
         address.setRegion(req.getRegion());
         address.setPostalCode(req.getZipCode());
-        address.setAddressLabel("Warehouse");
-
+        address.setAddressLabel("Default Pickup");
         Address savedAddress = addressRepository.save(address);
 
+        // 4. Create the Seller Profile and link it to the User
         Seller seller = new Seller();
-        seller.setEmail(req.getEmail());
-        seller.setPassword(passwordEncoder.encode(req.getPassword()));
+        seller.setUser(savedUser); // Link to the User entity
         seller.setSellerName(req.getSellerName());
-        seller.setMobile(req.getMobile());
         seller.setTIN(req.getTinNumber());
-        seller.setRole(User_Role.ROLE_SELLER);
         seller.setAccountStatus(AccountStatus.PENDING_VERIFICATION);
-
         seller.setPickupAddress(savedAddress);
 
         BusinessDetails business = new BusinessDetails();
         business.setBusinessName(req.getBusinessName());
         business.setBusinessAddress(req.getBusinessAddress());
         seller.setBusinessDetails(business);
-
         Seller savedSeller = sellerRepository.save(seller);
 
+        // 5. Create an empty report for the new seller
         SellerReport report = new SellerReport();
         report.setSeller(savedSeller);
-        report.setTotalEarnings(BigDecimal.ZERO);
-        report.setTotalSales(BigDecimal.ZERO);
-
         sellerReportRepository.save(report);
 
         return savedSeller;
@@ -87,8 +99,12 @@ public class SellerService {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String username = userDetails.getUsername();
 
-        return sellerRepository.findByEmail(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Seller not found with email: " + username));
+        // Find the User first, then find the associated Seller profile
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + username));
+
+        return sellerRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found for user ID: " + user.getId()));
     }
 
     @Transactional
@@ -98,5 +114,10 @@ public class SellerService {
 
         seller.setAccountStatus(AccountStatus.ACTIVE);
         return sellerRepository.save(seller);
+    }
+
+    public List<Order> findSellerOrders() {
+        Seller seller = findSellerProfileByJwt();
+        return orderRepository.findOrdersBySellerId(seller.getId());
     }
 }

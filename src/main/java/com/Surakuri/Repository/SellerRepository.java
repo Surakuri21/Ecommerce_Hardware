@@ -11,11 +11,18 @@ import java.util.Optional;
 @Repository
 public interface SellerRepository extends JpaRepository<Seller, Long> {
 
-    Optional<Seller> findByEmail(String email);
+    /**
+     * Finds a seller profile associated with a specific user ID.
+     * This is the primary way to get seller details from a logged-in user.
+     * @param userId The ID of the user.
+     * @return An Optional containing the Seller profile.
+     */
+    Optional<Seller> findByUserId(Long userId);
 
-    // For Admin to see all pending applications
+    /**
+     * For Admin to see all pending applications.
+     * @param status The account status to filter by.
+     * @return A list of sellers with the given status.
+     */
     List<Seller> findByAccountStatus(AccountStatus status);
-
-    // For checking duplicates during registration
-    boolean existsByEmail(String email);
 }

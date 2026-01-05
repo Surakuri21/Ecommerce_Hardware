@@ -17,23 +17,31 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // 1. CUSTOMER QUERIES (My Orders)
     // ==========================================
 
-    // Find all orders for a specific user (e.g., "Order History" page)
-    // Orders are sorted by newest first (OrderByCreatedAtDesc)
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
-    // Find a specific order by its Reference Number (e.g., User searching "ORD-2025-123")
     Optional<Order> findByOrderReferenceNumber(String orderReferenceNumber);
 
 
     // ==========================================
-    // 2. ADMIN QUERIES (Dashboard)
+    // 2. SELLER QUERIES (Seller Dashboard)
     // ==========================================
 
-    // Find orders by Status (e.g., "Show me all PENDING orders to pack")
+    /**
+     * Finds all orders that contain at least one product sold by a specific seller.
+     * This is the core query for the "My Incoming Orders" feature on the seller dashboard.
+     * @param sellerId The ID of the seller.
+     * @return A list of distinct orders for the seller, sorted by most recent first.
+     */
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.orderItems oi JOIN oi.variant v JOIN v.product p WHERE p.seller.id = :sellerId ORDER BY o.createdAt DESC")
+    List<Order> findOrdersBySellerId(@Param("sellerId") Long sellerId);
+
+
+    // ==========================================
+    // 3. ADMIN QUERIES (Dashboard)
+    // ==========================================
+
     List<Order> findByStatus(PaymentOrderStatus status);
 
-    // Total Sales Calculation (Sum of all PAID orders)
-    // Useful for an "Earnings Report" widget
     @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status = 'PAID'")
     Double calculateTotalSales();
 }

@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -37,9 +38,7 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
-    // ==========================================
-    // 1. REGISTER USER (Sign Up)
-    // ==========================================
+    @Transactional
     public User registerUser(SignupRequest req) {
 
         if (userRepository.existsByEmail(req.getEmail())) {
@@ -53,12 +52,7 @@ public class AuthService {
         user.setUsername(req.getEmail());
         user.setMobile(normalizePhMobile(req.getMobile()));
         user.setPassword(passwordEncoder.encode(req.getPassword()));
-
-        if (req.getRole() == null) {
-            user.setRole(User_Role.ROLE_CUSTOMER);
-        } else {
-            user.setRole(req.getRole());
-        }
+        user.setRole(User_Role.ROLE_CUSTOMER); // Always default to customer
 
         user.setActive(true);
         user.setCreatedAt(LocalDateTime.now());
@@ -72,26 +66,38 @@ public class AuthService {
         return savedUser;
     }
 
-    // ==========================================
-    // 2. LOGIN USER (Sign In)
-    // ==========================================
+    @Transactional
+    public User createAdmin(SignupRequest req) {
+        if (userRepository.existsByEmail(req.getEmail())) {
+            throw new UserAlreadyExistsException("Email is already registered: " + req.getEmail());
+        }
+
+        User user = new User();
+        user.setEmail(req.getEmail());
+        user.setFirstName(req.getFirstName());
+        user.setLastName(req.getLastName());
+        user.setUsername(req.getEmail());
+        user.setMobile(normalizePhMobile(req.getMobile()));
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+        user.setRole(User_Role.ROLE_ADMIN); // Explicitly set role to ADMIN
+
+        user.setActive(true);
+        user.setCreatedAt(LocalDateTime.now());
+
+        return userRepository.save(user);
+    }
+
     public AuthResponse loginUser(LoginRequest req) {
-        // This will automatically use your UserDetailsService to find the user
-        // and check the password.
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
         );
 
-        // If authentication is successful, generate a token
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtService.generateToken(userDetails);
 
         return new AuthResponse(token);
     }
 
-    // ==========================================
-    // 3. HELPER: PHILIPPINE MOBILE FORMATTER
-    // ==========================================
     private String normalizePhMobile(String mobile) {
         if (mobile == null || mobile.isEmpty()) return null;
         String clean = mobile.replaceAll("[^0-9]", "");
