@@ -1,6 +1,7 @@
 package com.Surakuri.Service;
 
 import com.Surakuri.Domain.AccountStatus;
+import com.Surakuri.Domain.PaymentOrderStatus;
 import com.Surakuri.Domain.User_Role;
 import com.Surakuri.Exception.ResourceNotFoundException;
 import com.Surakuri.Exception.UserAlreadyExistsException;
@@ -119,5 +120,24 @@ public class SellerService {
     public List<Order> findSellerOrders() {
         Seller seller = findSellerProfileByJwt();
         return orderRepository.findOrdersBySellerId(seller.getId());
+    }
+
+    @Transactional
+    public Order updateOrderStatus(Long orderId, PaymentOrderStatus newStatus) {
+        Seller seller = findSellerProfileByJwt();
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+
+        // SECURITY CHECK: Does this order contain items from this seller?
+        // We reuse the repository logic to verify ownership.
+        List<Order> sellerOrders = orderRepository.findOrdersBySellerId(seller.getId());
+        boolean isSellerOrder = sellerOrders.stream().anyMatch(o -> o.getId().equals(orderId));
+
+        if (!isSellerOrder) {
+            throw new RuntimeException("You are not authorized to update this order.");
+        }
+
+        order.setStatus(newStatus);
+        return orderRepository.save(order);
     }
 }

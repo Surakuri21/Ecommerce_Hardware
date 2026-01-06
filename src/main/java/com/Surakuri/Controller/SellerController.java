@@ -1,5 +1,6 @@
 package com.Surakuri.Controller;
 
+import com.Surakuri.Domain.PaymentOrderStatus;
 import com.Surakuri.Model.dto.SellerRegisterRequest;
 import com.Surakuri.Model.entity.Payment_Orders.Order;
 import com.Surakuri.Service.SellerService;
@@ -40,5 +41,20 @@ public class SellerController {
     public ResponseEntity<List<Order>> getSellerOrders() {
         List<Order> orders = sellerService.findSellerOrders();
         return ResponseEntity.ok(orders);
+    }
+
+    /**
+     * Updates the status of an order.
+     * Only the seller who owns the products in the order can update its status.
+     * URL: PATCH http://localhost:2121/api/sellers/orders/{orderId}/status?status=SHIPPED
+     */
+    @PatchMapping("/orders/{orderId}/status")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<Order> updateOrderStatus(
+            @PathVariable Long orderId,
+            @RequestParam PaymentOrderStatus status
+    ) {
+        Order updatedOrder = sellerService.updateOrderStatus(orderId, status);
+        return ResponseEntity.ok(updatedOrder);
     }
 }
