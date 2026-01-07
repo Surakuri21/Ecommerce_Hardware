@@ -35,6 +35,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT DISTINCT o FROM Order o JOIN o.orderItems oi JOIN oi.variant v JOIN v.product p WHERE p.seller.id = :sellerId ORDER BY o.createdAt DESC")
     List<Order> findOrdersBySellerId(@Param("sellerId") Long sellerId);
 
+    /**
+     * Checks if a specific order contains any products sold by a specific seller.
+     * This is used for security checks when a seller tries to update an order.
+     */
+    @Query("SELECT COUNT(o) > 0 FROM Order o JOIN o.orderItems oi JOIN oi.variant v JOIN v.product p WHERE o.id = :orderId AND p.seller.id = :sellerId")
+    boolean existsByOrderIdAndSellerId(@Param("orderId") Long orderId, @Param("sellerId") Long sellerId);
+
 
     // ==========================================
     // 3. ADMIN QUERIES (Dashboard)

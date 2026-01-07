@@ -9,11 +9,13 @@ import com.Surakuri.Model.entity.Products_Categories.ProductVariant;
 import com.Surakuri.Repository.CategoryRepository;
 import com.Surakuri.Repository.ProductRepository;
 import com.Surakuri.Repository.SellerRepository;
+import com.Surakuri.Specification.ProductSpecification;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +35,7 @@ public class ProductService {
     @Autowired
     private SellerRepository sellerRepository;
     @Autowired
-    private ObjectMapper objectMapper; // For converting Map to JSON string
+    private ObjectMapper objectMapper;
 
     @Transactional
     public Product createProduct(CreateProductRequest req, Long sellerId) {
@@ -58,7 +60,6 @@ public class ProductService {
         product.setCreatedAt(LocalDateTime.now());
         product.setActive(true);
 
-        // Save parent first to get its ID
         Product savedProduct = productRepository.save(product);
 
         List<ProductVariant> variantList = savedProduct.getVariants();
@@ -69,29 +70,24 @@ public class ProductService {
             variant.setSku(vReq.getSku());
             variant.setPrice(vReq.getPrice());
             variant.setStockQuantity(vReq.getQuantity());
-            variant.setMinStockLevel(10); // Default value
+            variant.setMinStockLevel(10);
 
-            // Process flexible attributes
             Map<String, String> attributes = vReq.getAttributes();
             try {
-                // Store all attributes as a JSON string
                 variant.setSpecifications(objectMapper.writeValueAsString(attributes));
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Error processing variant attributes", e);
             }
 
-            // Generate a user-friendly variant name from attributes
             String generatedName = attributes.values().stream().collect(Collectors.joining(" / "));
             variant.setVariantName(generatedName);
 
-            // Extract weight from attributes if present
             if (attributes.containsKey("Weight")) {
                 try {
-                    // Remove "kg" and parse
                     String weightStr = attributes.get("Weight").replaceAll("[^\\d.]", "");
                     variant.setWeightKg(new BigDecimal(weightStr));
                 } catch (NumberFormatException e) {
-                    variant.setWeightKg(BigDecimal.ZERO); // Default if parsing fails
+                    variant.setWeightKg(BigDecimal.ZERO);
                 }
             } else {
                 variant.setWeightKg(BigDecimal.ZERO);
@@ -100,7 +96,6 @@ public class ProductService {
             variantList.add(variant);
         }
 
-        // Set default price and weight on parent product from the first variant
         if (!variantList.isEmpty()) {
             savedProduct.setPrice(variantList.get(0).getPrice());
             savedProduct.setWeightKg(variantList.get(0).getWeightKg());
@@ -111,5 +106,27 @@ public class ProductService {
 
     public Page<Product> findAllProducts(Pageable pageable) {
         return productRepository.findAll(pageable);
+    }
+
+    /**
+     * Advanced search for products with multiple filters.
+     */
+    public Page<Product> searchProducts(String name, String brand, String category, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
+        Specification<Product> spec = Specification.where(ProductSpecification.isActive());
+
+        if (name != null && !name.isEmpty()) {
+            spec = spec.and(ProductSpecification.hasName(name));
+        }
+        if (brand != null && !brand.isEmpty()) {
+            spec = spec.and(ProductSpecification.hasBrand(brand));
+        }
+        if (category != null && !category.isEmpty()) {
+            spec = spec.and(ProductSpecification.hasCategory(category));
+        }
+        if (minPrice != null || maxPrice != null) {
+            spec = spec.and(ProductSpecification.priceBetween(minPrice, maxPrice));
+        }
+
+        return productRepository.findAll(spec, pageable);
     }
 }

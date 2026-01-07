@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
@@ -37,15 +39,22 @@ public class ProductController {
     }
 
     /**
-     * Public endpoint to get a paginated list of all active products.
-     * Supports sorting and pagination via URL parameters.
-     * Example: GET http://localhost:2121/api/products?page=0&size=10&sort=price,asc
-     * @param pageable A Pageable object automatically created by Spring from the request parameters.
-     * @return A ResponseEntity containing a Page of products.
+     * Public endpoint to search and filter products.
+     * Supports filtering by name, brand, category, and price range.
+     * Also supports pagination and sorting via standard Pageable parameters.
+     *
+     * Example: GET /api/products?name=Drill&category=Power Tools&minPrice=1000&sort=price,asc
      */
     @GetMapping
-    public ResponseEntity<Page<Product>> getAllProducts(Pageable pageable) {
-        Page<Product> products = productService.findAllProducts(pageable);
+    public ResponseEntity<Page<Product>> searchProducts(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            Pageable pageable
+    ) {
+        Page<Product> products = productService.searchProducts(name, brand, category, minPrice, maxPrice, pageable);
         return ResponseEntity.ok(products);
     }
 }

@@ -2,15 +2,15 @@ package com.Surakuri.Controller;
 
 import com.Surakuri.Model.dto.CheckoutRequest;
 import com.Surakuri.Model.dto.OrderResponse;
+import com.Surakuri.Model.entity.Payment_Orders.Order;
 import com.Surakuri.Model.entity.User_Cart.User;
 import com.Surakuri.Service.OrderService;
 import com.Surakuri.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Controller for handling all order-related operations.
@@ -34,13 +34,20 @@ public class OrderController {
      */
     @PostMapping("/checkout")
     public ResponseEntity<OrderResponse> checkout(@RequestBody CheckoutRequest req) {
-        // 1. Get the authenticated user securely from the JWT.
         User user = userService.findUserProfileByJwt();
-
-        // 2. Call the existing service method to perform the checkout logic.
         OrderResponse orderResponse = orderService.checkout(user.getId(), req);
-
-        // 3. Return the successful order response.
         return ResponseEntity.ok(orderResponse);
+    }
+
+    /**
+     * Retrieves the order history for the currently authenticated user.
+     * The user is identified via their JWT token.
+     *
+     * @return A list of the user's orders, sorted by most recent first.
+     */
+    @GetMapping("/user")
+    public ResponseEntity<List<Order>> getUserOrders() {
+        List<Order> orders = orderService.findUserOrders();
+        return ResponseEntity.ok(orders);
     }
 }

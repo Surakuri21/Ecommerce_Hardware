@@ -35,6 +35,9 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthFilter;
 
+    @Autowired
+    private RequestLoggingFilter requestLoggingFilter; // Inject the new filter
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
@@ -53,7 +56,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration cfg = new CorsConfiguration();
                     cfg.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173"));
-                    cfg.setAllowedMethods(Collections.singletonList("*"));
+                    // FIX: Explicitly list methods instead of wildcard
+                    cfg.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                     cfg.setAllowCredentials(true);
                     cfg.setAllowedHeaders(Collections.singletonList("*"));
                     cfg.setExposedHeaders(Arrays.asList("Authorization"));
@@ -61,6 +65,7 @@ public class SecurityConfig {
                     return cfg;
                 }))
                 .authenticationProvider(authenticationProvider()) // Set the custom authentication provider
+                .addFilterBefore(requestLoggingFilter, UsernamePasswordAuthenticationFilter.class) // Add logging filter first
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // Add the JWT filter
 
         return http.build();

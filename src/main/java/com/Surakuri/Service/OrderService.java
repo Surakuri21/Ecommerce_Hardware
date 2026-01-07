@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,6 +39,8 @@ public class OrderService {
     private CartItemRepository cartItemRepository;
     @Autowired
     private ProductVariantRepository productVariantRepository;
+    @Autowired
+    private UserService userService;
 
     @Transactional
     public OrderResponse checkout(Long userId, CheckoutRequest req) {
@@ -45,7 +48,6 @@ public class OrderService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // FIX: Use the method that eagerly fetches cart items
         Cart cart = cartRepository.findByUserIdWithItems(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
@@ -101,6 +103,11 @@ public class OrderService {
         cartRepository.save(cart);
 
         return mapToResponse(savedOrder, req.getPaymentMethod().toString());
+    }
+
+    public List<Order> findUserOrders() {
+        User user = userService.findUserProfileByJwt();
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
     }
 
     private OrderResponse mapToResponse(Order order, String paymentMethod) {

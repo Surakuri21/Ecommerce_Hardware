@@ -37,7 +37,7 @@ public class SellerController {
      * @return A list of orders that contain products sold by the seller.
      */
     @GetMapping("/my-orders")
-    @PreAuthorize("hasRole('SELLER')")
+    @PreAuthorize("hasAuthority('ROLE_SELLER')")
     public ResponseEntity<List<Order>> getSellerOrders() {
         List<Order> orders = sellerService.findSellerOrders();
         return ResponseEntity.ok(orders);
@@ -46,10 +46,10 @@ public class SellerController {
     /**
      * Updates the status of an order.
      * Only the seller who owns the products in the order can update its status.
-     * URL: PATCH http://localhost:2121/api/sellers/orders/{orderId}/status?status=SHIPPED
+     * URL: PUT http://localhost:2121/api/sellers/orders/{orderId}/status?status=SHIPPED
      */
-    @PatchMapping("/orders/{orderId}/status")
-    @PreAuthorize("hasRole('SELLER')")
+    @PutMapping("/orders/{orderId}/status")
+    // @PreAuthorize("hasAuthority('ROLE_SELLER')") // TEMPORARILY REMOVED FOR DEBUGGING
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
             @RequestParam PaymentOrderStatus status

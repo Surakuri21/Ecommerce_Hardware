@@ -1,7 +1,11 @@
 package com.Surakuri.Domain;
 
 public enum PaymentOrderStatus {
-    PENDING,  // The user clicked "Pay" but hasn't finished the process
-    SUCCESS,  // The gateway confirmed the money is captured
-    FAILED    // The card was declined or the user cancelled
+    PENDING,    // Order placed, waiting for seller action
+    CONFIRMED,  // Seller has accepted the order
+    SHIPPED,    // Seller has handed over to courier
+    DELIVERED,  // Customer has received the item
+    CANCELLED,  // Order was cancelled
+    SUCCESS,    // (Legacy) Payment successful
+    FAILED      // Payment failed
 }
