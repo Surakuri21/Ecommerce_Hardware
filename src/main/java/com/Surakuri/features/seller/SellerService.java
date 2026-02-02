@@ -10,7 +10,7 @@ import com.Surakuri.features.user.Address;
 import com.Surakuri.features.order.Order;
 import com.Surakuri.features.user.AddressRepository;
 import com.Surakuri.features.user.User;
-import com.Surakuri.features.user.UserRepository;
+import com.Surakuri.features.user.UserService; // Import UserService
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,7 +27,7 @@ public class SellerService {
     @Autowired
     private SellerRepository sellerRepository;
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService; // Use UserService instead of Repository
     @Autowired
     private AddressRepository addressRepository;
     @Autowired
@@ -41,7 +41,7 @@ public class SellerService {
     public Seller registerSeller(SellerRegisterRequest req) {
 
         // 1. Check if a user with this email already exists
-        if (userRepository.existsByEmail(req.getEmail())) {
+        if (userService.existsByEmail(req.getEmail())) {
             throw new UserAlreadyExistsException("An account with this email already exists.");
         }
 
@@ -56,7 +56,7 @@ public class SellerService {
         user.setRole(User_Role.ROLE_SELLER);
         user.setActive(true); // Sellers are active by default but their account status is pending
         user.setCreatedAt(LocalDateTime.now());
-        User savedUser = userRepository.save(user);
+        User savedUser = userService.saveUser(user);
 
         // 3. Create the pickup address
         Address address = new Address();
@@ -98,7 +98,7 @@ public class SellerService {
         String username = userDetails.getUsername();
 
         // Find the User first, then find the associated Seller profile
-        User user = userRepository.findByEmail(username)
+        User user = userService.findByEmail(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + username));
 
         return sellerRepository.findByUserId(user.getId())

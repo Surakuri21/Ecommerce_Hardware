@@ -1,7 +1,7 @@
 package com.Surakuri.features.auth;
 
 import com.Surakuri.features.user.User;
-import com.Surakuri.features.user.UserRepository;
+import com.Surakuri.features.user.UserService; // Import UserService
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,11 +17,12 @@ import java.util.List;
 public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService; // Use UserService instead of Repository
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(username)
+        // Use userService.findByEmail which returns Optional<User>
+        User user = userService.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
 
         List<GrantedAuthority> authorities = new ArrayList<>();

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
+interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
 
     // ==========================================
     // 1. STOREFRONT DISPLAY

@@ -2,10 +2,9 @@ package com.Surakuri.features.auth;
 
 import com.Surakuri.features.seller.User_Role;
 import com.Surakuri.shared.exception.UserAlreadyExistsException;
-import com.Surakuri.features.cart.Cart;
+import com.Surakuri.features.cart.CartService; // Import CartService
 import com.Surakuri.features.user.User;
-import com.Surakuri.features.cart.CartRepository;
-import com.Surakuri.features.user.UserRepository;
+import com.Surakuri.features.user.UserService; // Import UserService
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,10 +20,10 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService; // Use UserService instead of Repository
 
     @Autowired
-    private CartRepository cartRepository;
+    private CartService cartService; // Use CartService instead of Repository
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -38,7 +37,7 @@ public class AuthService {
     @Transactional
     public User registerUser(SignupRequest req) {
 
-        if (userRepository.existsByEmail(req.getEmail())) {
+        if (userService.existsByEmail(req.getEmail())) {
             throw new UserAlreadyExistsException("Email is already registered: " + req.getEmail());
         }
 
@@ -54,18 +53,17 @@ public class AuthService {
         user.setActive(true);
         user.setCreatedAt(LocalDateTime.now());
 
-        User savedUser = userRepository.save(user);
+        User savedUser = userService.saveUser(user);
 
-        Cart cart = new Cart();
-        cart.setUser(savedUser);
-        cartRepository.save(cart);
+        // Use CartService to create the cart
+        cartService.createCartForUser(savedUser);
 
         return savedUser;
     }
 
     @Transactional
     public User createAdmin(SignupRequest req) {
-        if (userRepository.existsByEmail(req.getEmail())) {
+        if (userService.existsByEmail(req.getEmail())) {
             throw new UserAlreadyExistsException("Email is already registered: " + req.getEmail());
         }
 
@@ -81,7 +79,7 @@ public class AuthService {
         user.setActive(true);
         user.setCreatedAt(LocalDateTime.now());
 
-        return userRepository.save(user);
+        return userService.saveUser(user);
     }
 
     public AuthResponse loginUser(LoginRequest req) {

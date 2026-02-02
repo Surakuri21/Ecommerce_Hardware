@@ -4,6 +4,7 @@ import com.Surakuri.features.product.DTO.CreateProductRequest;
 import com.Surakuri.features.product.DTO.VariantRequest;
 import com.Surakuri.features.seller.Seller;
 import com.Surakuri.features.seller.SellerRepository;
+import com.Surakuri.shared.exception.ResourceNotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,8 @@ public class ProductService {
     private CategoryRepository categoryRepository;
     @Autowired
     private SellerRepository sellerRepository;
+    @Autowired
+    private ProductVariantRepository variantRepository; // Inject the repository here
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -122,5 +125,16 @@ public class ProductService {
         }
 
         return productRepository.findAll(spec, pageable);
+    }
+
+    // New method to expose variant retrieval
+    public ProductVariant getProductVariantById(Long id) {
+        return variantRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product Variant not found"));
+    }
+    
+    // New method to save variant (needed for stock updates)
+    public ProductVariant saveProductVariant(ProductVariant variant) {
+        return variantRepository.save(variant);
     }
 }

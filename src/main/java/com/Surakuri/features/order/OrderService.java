@@ -1,13 +1,12 @@
 package com.Surakuri.features.order;
 
-import com.Surakuri.features.cart.CartItemRepository;
+import com.Surakuri.features.cart.CartService; // Import CartService
 import com.Surakuri.features.payment.PaymentOrderStatus;
-import com.Surakuri.features.product.ProductVariantRepository;
+import com.Surakuri.features.product.ProductService;
 import com.Surakuri.shared.exception.ProductOutOfStockException;
 import com.Surakuri.shared.exception.ResourceNotFoundException;
 import com.Surakuri.features.order.DTO.CheckoutRequest;
 import com.Surakuri.features.order.DTO.OrderResponse;
-import com.Surakuri.features.cart.CartRepository;
 import com.Surakuri.features.user.*;
 import com.Surakuri.features.product.ProductVariant;
 import com.Surakuri.features.cart.Cart;
@@ -22,33 +21,30 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
 
     @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private CartRepository cartRepository;
+    private UserService userService; // Use UserService instead of Repository
+    // Removed CartRepository and CartItemRepository
     @Autowired
     private OrderRepository orderRepository;
     @Autowired
     private AddressRepository addressRepository;
     @Autowired
-    private CartItemRepository cartItemRepository;
+    private ProductService productService;
     @Autowired
-    private ProductVariantRepository productVariantRepository;
-    @Autowired
-    private UserService userService;
+    private CartService cartService; // Inject CartService
 
     @Transactional
     public OrderResponse checkout(Long userId, CheckoutRequest req) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = userService.findById(userId); // Use UserService
 
-        Cart cart = cartRepository.findByUserIdWithItems(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
+        // Use CartService to get the cart
+        Cart cart = cartService.getCartEntityByUserId(userId);
 
         Address address = addressRepository.findById(req.getAddressId())
                 .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
@@ -77,7 +73,7 @@ public class OrderService {
             }
 
             variant.setStockQuantity(variant.getStockQuantity() - cartItem.getQuantity());
-            productVariantRepository.save(variant);
+            productService.saveProductVariant(variant);
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
@@ -97,16 +93,20 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        cartItemRepository.deleteAll(cart.getCartItems());
-        cart.getCartItems().clear();
-        cartRepository.save(cart);
+        // Use CartService to clear the cart
+        // FIX: Pass the cart object directly to use orphanRemoval
+        cartService.clearCart(cart);
 
         return mapToResponse(savedOrder, req.getPaymentMethod().toString());
     }
 
-    public List<Order> findUserOrders() {
+    public List<OrderResponse> findUserOrders() {
         User user = userService.findUserProfileByJwt();
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        List<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        
+        return orders.stream()
+                .map(order -> mapToResponse(order, "COD")) // Assuming COD for now, or fetch from PaymentOrder if available
+                .collect(Collectors.toList());
     }
 
     private OrderResponse mapToResponse(Order order, String paymentMethod) {

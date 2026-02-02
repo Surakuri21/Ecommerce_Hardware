@@ -44,8 +44,8 @@ public class OrderController {
      * @return A list of the user's orders, sorted by most recent first.
      */
     @GetMapping("/user")
-    public ResponseEntity<List<Order>> getUserOrders() {
-        List<Order> orders = orderService.findUserOrders();
+    public ResponseEntity<List<OrderResponse>> getUserOrders() {
+        List<OrderResponse> orders = orderService.findUserOrders();
         return ResponseEntity.ok(orders);
     }
 }

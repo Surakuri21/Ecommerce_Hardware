@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface CategoryRepository extends JpaRepository<Category, Long> {
+interface CategoryRepository extends JpaRepository<Category, Long> {
 
     // 1. Find Main Categories (Root Level)
     // Useful for the main navbar (e.g., "Construction", "Electrical")

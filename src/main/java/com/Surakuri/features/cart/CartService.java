@@ -6,9 +6,9 @@ import com.Surakuri.features.cart.DTO.AddItemRequest;
 import com.Surakuri.features.cart.DTO.CartItemResponse;
 import com.Surakuri.features.cart.DTO.CartResponse;
 import com.Surakuri.features.product.ProductVariant;
+import com.Surakuri.features.product.ProductService; // Import ProductService
 import com.Surakuri.features.user.User;
-import com.Surakuri.features.product.ProductVariantRepository;
-import com.Surakuri.features.user.UserRepository;
+import com.Surakuri.features.user.UserService; // Import UserService
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,29 +26,30 @@ public class CartService {
     @Autowired
     private CartItemRepository cartItemRepository;
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService; // Use UserService instead of Repository
     @Autowired
-    private ProductVariantRepository variantRepository;
+    private ProductService productService; // Use ProductService instead of Repository
 
     @Transactional
     public CartResponse addItemToCart(Long userId, AddItemRequest req) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = userService.findById(userId); // Use UserService
 
-        Cart cart = cartRepository.findByUserId(userId)
+        // 1. Get the cart (eagerly fetch items if possible, but we will refresh later)
+        Cart cart = cartRepository.findByUserIdWithItems(userId)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
                     newCart.setUser(user);
                     return cartRepository.save(newCart);
                 });
 
-        ProductVariant variant = variantRepository.findById(req.getVariantId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product Variant not found"));
+        // 2. Get the variant
+        ProductVariant variant = productService.getProductVariantById(req.getVariantId());
 
         if (variant.getStockQuantity() < req.getQuantity()) {
             throw new ProductOutOfStockException("Insufficient stock for " + variant.getVariantName());
         }
 
+        // 3. Check if item exists using the repository (Direct DB check)
         Optional<CartItem> existingItemOpt = cartItemRepository.findByCartIdAndVariantId(cart.getId(), variant.getId());
 
         if (existingItemOpt.isPresent()) {
@@ -60,9 +61,17 @@ public class CartService {
             newItem.setCart(cart);
             newItem.setVariant(variant);
             newItem.setQuantity(req.getQuantity());
+            
+            // CRITICAL FIX: Save the item AND add it to the cart's collection in memory
+            // This ensures that if we map the cart to response immediately, it shows the new item.
             cartItemRepository.save(newItem);
+            cart.getCartItems().add(newItem); 
         }
 
+        // 4. Force a refresh from the database to ensure we have the full object graph (Product, Variant, etc.)
+        // We must flush changes first so the query sees the new item.
+        cartItemRepository.flush(); 
+        
         Cart updatedCart = cartRepository.findByUserIdWithItems(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found after update"));
 
@@ -73,6 +82,28 @@ public class CartService {
         Cart cart = cartRepository.findByUserIdWithItems(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found for user ID: " + userId));
         return mapToResponse(cart);
+    }
+
+    // New method for OrderService to get the Cart entity
+    public Cart getCartEntityByUserId(Long userId) {
+        return cartRepository.findByUserIdWithItems(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
+    }
+
+    // New method for OrderService to clear the cart
+    // FIX: Use JPA orphanRemoval instead of manual delete to avoid locking issues
+    @Transactional
+    public void clearCart(Cart cart) {
+        cart.getCartItems().clear();
+        cartRepository.save(cart);
+    }
+
+    // New method to create a cart (for AuthService)
+    @Transactional
+    public void createCartForUser(User user) {
+        Cart cart = new Cart();
+        cart.setUser(user);
+        cartRepository.save(cart);
     }
 
     private CartResponse mapToResponse(Cart cart) {

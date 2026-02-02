@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface CartItemRepository extends JpaRepository<CartItem, Long> {
+interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
     // ==========================================
     // 1. THE "ADD TO CART" CHECKER
