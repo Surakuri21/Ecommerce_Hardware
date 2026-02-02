@@ -5,7 +5,7 @@ import com.Surakuri.shared.exception.ResourceNotFoundException;
 import com.Surakuri.shared.exception.UserAlreadyExistsException;
 import com.Surakuri.features.seller.DTO.BusinessDetails;
 import com.Surakuri.features.seller.DTO.SellerRegisterRequest;
-import com.Surakuri.features.order.OrderRepository;
+import com.Surakuri.features.order.OrderService; // Import OrderService
 import com.Surakuri.features.user.Address;
 import com.Surakuri.features.order.Order;
 import com.Surakuri.features.user.AddressRepository;
@@ -35,7 +35,7 @@ public class SellerService {
     @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
-    private OrderRepository orderRepository;
+    private OrderService orderService; // Use OrderService instead of Repository
 
     @Transactional
     public Seller registerSeller(SellerRegisterRequest req) {
@@ -116,26 +116,12 @@ public class SellerService {
 
     public List<Order> findSellerOrders() {
         Seller seller = findSellerProfileByJwt();
-        return orderRepository.findOrdersBySellerId(seller.getId());
+        return orderService.findOrdersBySellerId(seller.getId());
     }
 
     @Transactional
     public Order updateOrderStatus(Long orderId, PaymentOrderStatus newStatus) {
         Seller seller = findSellerProfileByJwt();
-        
-        // SECURITY CHECK: Use the direct database query
-        boolean isSellerOrder = orderRepository.existsByOrderIdAndSellerId(orderId, seller.getId());
-
-        if (!isSellerOrder) {
-            // This exception will result in a 500 error by default, or a 403 if handled by a global exception handler.
-            // For now, it explains why the operation failed.
-            throw new RuntimeException("You are not authorized to update this order.");
-        }
-
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
-
-        order.setStatus(newStatus);
-        return orderRepository.save(order);
+        return orderService.updateOrderStatus(orderId, newStatus, seller.getId());
     }
 }

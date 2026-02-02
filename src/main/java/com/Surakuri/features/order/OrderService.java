@@ -109,6 +109,28 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    public List<Order> findOrdersBySellerId(Long sellerId) {
+        return orderRepository.findOrdersBySellerId(sellerId);
+    }
+
+    @Transactional
+    public Order updateOrderStatus(Long orderId, PaymentOrderStatus newStatus, Long sellerId) {
+        // SECURITY CHECK: Use the direct database query
+        boolean isSellerOrder = orderRepository.existsByOrderIdAndSellerId(orderId, sellerId);
+
+        if (!isSellerOrder) {
+            // This exception will result in a 500 error by default, or a 403 if handled by a global exception handler.
+            // For now, it explains why the operation failed.
+            throw new RuntimeException("You are not authorized to update this order.");
+        }
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+
+        order.setStatus(newStatus);
+        return orderRepository.save(order);
+    }
+
     private OrderResponse mapToResponse(Order order, String paymentMethod) {
         OrderResponse res = new OrderResponse();
         res.setOrderId(order.getId());

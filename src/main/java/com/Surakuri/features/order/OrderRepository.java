@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface OrderRepository extends JpaRepository<Order, Long> {
+interface OrderRepository extends JpaRepository<Order, Long> {
 
     // ==========================================
     // 1. CUSTOMER QUERIES (My Orders)
