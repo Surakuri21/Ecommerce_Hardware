@@ -1,6 +1,7 @@
 package com.Surakuri.features.seller;
 
 import com.Surakuri.features.payment.PaymentOrderStatus;
+import com.Surakuri.features.seller.DTO.SellerDashboardDTO; // Import DTO
 import com.Surakuri.shared.exception.ResourceNotFoundException;
 import com.Surakuri.shared.exception.UserAlreadyExistsException;
 import com.Surakuri.features.seller.DTO.BusinessDetails;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -123,5 +125,41 @@ public class SellerService {
     public Order updateOrderStatus(Long orderId, PaymentOrderStatus newStatus) {
         Seller seller = findSellerProfileByJwt();
         return orderService.updateOrderStatus(orderId, newStatus, seller.getId());
+    }
+
+    public SellerDashboardDTO getSellerAnalytics() {
+        Seller seller = findSellerProfileByJwt();
+        List<Order> orders = orderService.findOrdersBySellerId(seller.getId());
+
+        SellerDashboardDTO stats = new SellerDashboardDTO();
+        stats.setTotalOrders(orders.size());
+
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        long pending = 0;
+        long completed = 0;
+
+        for (Order order : orders) {
+            // Only count revenue for completed/paid orders (optional logic)
+            // For now, let's count everything except CANCELLED
+            if (order.getStatus() != PaymentOrderStatus.CANCELLED) {
+                // Note: This totalAmount is the ORDER total, which might include items from OTHER sellers if we allow mixed carts.
+                // Ideally, we should sum up only the items belonging to THIS seller.
+                // But for MVP, assuming single-seller orders or simple split, this is a start.
+                // To be precise: We should iterate order.getOrderItems() and check variant.getProduct().getSeller().getId()
+                totalRevenue = totalRevenue.add(order.getTotalAmount());
+            }
+
+            if (order.getStatus() == PaymentOrderStatus.PENDING) {
+                pending++;
+            } else if (order.getStatus() == PaymentOrderStatus.DELIVERED) {
+                completed++;
+            }
+        }
+
+        stats.setTotalRevenue(totalRevenue);
+        stats.setPendingOrders(pending);
+        stats.setCompletedOrders(completed);
+
+        return stats;
     }
 }

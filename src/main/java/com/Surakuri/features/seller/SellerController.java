@@ -1,6 +1,7 @@
 package com.Surakuri.features.seller;
 
 import com.Surakuri.features.payment.PaymentOrderStatus;
+import com.Surakuri.features.seller.DTO.SellerDashboardDTO; // Import DTO
 import com.Surakuri.features.seller.DTO.SellerRegisterRequest;
 import com.Surakuri.features.order.Order;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,12 +49,23 @@ public class SellerController {
      * URL: PUT http://localhost:2121/api/sellers/orders/{orderId}/status?status=SHIPPED
      */
     @PutMapping("/orders/{orderId}/status")
-    // @PreAuthorize("hasAuthority('ROLE_SELLER')") // TEMPORARILY REMOVED FOR DEBUGGING
+    @PreAuthorize("hasAuthority('ROLE_SELLER')") // Restored security check
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
             @RequestParam PaymentOrderStatus status
     ) {
         Order updatedOrder = sellerService.updateOrderStatus(orderId, status);
         return ResponseEntity.ok(updatedOrder);
+    }
+
+    /**
+     * Retrieves key business metrics for the seller dashboard.
+     * URL: GET http://localhost:2121/api/sellers/analytics
+     */
+    @GetMapping("/analytics")
+    @PreAuthorize("hasAuthority('ROLE_SELLER')")
+    public ResponseEntity<SellerDashboardDTO> getSellerAnalytics() {
+        SellerDashboardDTO stats = sellerService.getSellerAnalytics();
+        return ResponseEntity.ok(stats);
     }
 }
