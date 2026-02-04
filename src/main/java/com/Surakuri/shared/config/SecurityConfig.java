@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/sellers/register").permitAll() // Allow public access to seller registration
                         .requestMatchers("/api/products/**").permitAll() // Allow public access to products
+                        .requestMatchers("/uploads/**").permitAll() // Allow public access to uploaded images
 
                         // All other requests must be authenticated
                         .anyRequest().authenticated()
